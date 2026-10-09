@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Skill Packager</title>
+  
+  <!-- JSZip Library for client-side zip creation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <style>
+    * { 
+      box-sizing: border-box; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+    }
+    
+    body { 
+      background-color: #f8fafc; 
+      margin: 0; 
+      padding: 20px; 
+      color: #0f172a; 
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    h1 { 
+      font-size: 1.35rem; 
+      font-weight: 700;
+      margin: 0 0 4px 0; 
+      color: #0f172a;
+      letter-spacing: -0.02em;
+    }
+
+    p.subtitle {
+      margin: 0; 
+      font-size: 0.85rem; 
+      color: #64748b;
+    }
+
+    .top-bar { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      background: #ffffff; 
+      padding: 16px 20px; 
+      border-radius: 12px; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03); 
+      margin-bottom: 20px; 
+      border: 1px solid #e2e8f0;
+      flex-shrink: 0;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn { 
+      background-color: #2563eb; 
+      color: white; 
+      border: none; 
+      padding: 9px 16px; 
+      border-radius: 8px; 
+      font-weight: 600; 
+      font-size: 0.875rem;
+      cursor: pointer; 
+      transition: all 0.15s ease-in-out; 
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn:hover { 
+      background-color: #1d4ed8; 
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled { 
+      background-color: #93c5fd; 
+      cursor: not-allowed; 
+      box-shadow: none;
+      transform: none;
+    }
+
+    .btn-secondary { 
+      background-color: #ffffff; 
+      color: #334155; 
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .btn-secondary:hover { 
+      background-color: #f1f5f9; 
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+
+    .board { 
+      display: grid; 
+      grid-template-columns: 1fr 1fr; 
+      gap: 20px; 
+      flex: 1;
+      min-height: 0;
+    }
+
+    .column { 
+      background: #ffffff; 
+      border-radius: 12px; 
+      border: 2px dashed #cbd5e1; 
+      padding: 16px; 
+      display: flex; 
+      flex-direction: column; 
+      overflow: hidden;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .column.drag-over { 
+      border-color: #2563eb; 
+      background-color: #eff6ff; 
+    }
+
+    .column.selected-column.drag-over {
+      border-color: #10b981;
+      background-color: #ecfdf5;
+    }
+
+    .column-header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #f1f5f9;
+      flex-shrink: 0;
+    }
+
+    .column-title {
+      font-size: 0.975rem; 
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .count-badge { 
+      background: #e2e8f0; 
+      color: #475569; 
+      padding: 2px 8px; 
+      border-radius: 12px; 
+      font-size: 0.75rem; 
+      font-weight: 600;
+    }
+
+    .count-badge.emerald {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .count-badge.amber {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+
+    .controls-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .search-box {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      font-size: 0.825rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-box:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+
+    .tree-container { 
+      flex: 1; 
+      overflow-y: auto; 
+      padding-right: 4px;
+    }
+
+    .tree-view {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tree-folder {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #ffffff;
+      overflow: hidden;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .tree-folder-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #f8fafc;
+      cursor: grab;
+      user-select: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #334155;
+      transition: background 0.15s;
+      border-bottom: 1px solid transparent;
+    }
+
+    .tree-folder-header:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .tree-folder-header:active {
+      cursor: grabbing;
+    }
+
+    .folder-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .folder-toggle {
+      font-size: 0.65rem;
+      color: #64748b;
+      width: 12px;
+      display: inline-block;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .folder-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .folder-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-xs {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #2563eb;
+      padding: 2px 8px;
+      border-radius: 5px;
+      font-size: 0.725rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-xs:hover {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    .btn-xs.btn-xs-add-remaining {
+      color: #d97706;
+      border-color: #fde68a;
+      background: #fffbeb;
+    }
+
+    .btn-xs.btn-xs-add-remaining:hover {
+      background: #d97706;
+      color: #ffffff;
+      border-color: #d97706;
+    }
+
+    .btn-xs.btn-xs-remove {
+      color: #ef4444;
+      border-color: #fca5a5;
+    }
+
+    .btn-xs.btn-xs-remove:hover {
+      background: #ef4444;
+      color: #ffffff;
+      border-color: #ef4444;
+    }
+
+    .tree-folder-body {
+      padding: 8px 8px 8px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-top: 1px solid #f1f5f9;
+      background: #fafafa;
+    }
+
+    .tree-folder-body.collapsed {
+      display: none;
+    }
+
+    .card { 
+      background: #ffffff; 
+      border: 1px solid #e2e8f0; 
+      padding: 9px 12px; 
+      border-radius: 7px; 
+      cursor: grab; 
+      transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s; 
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+
+    .card:hover { 
+      border-color: #cbd5e1;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.05); 
+    }
+
+    .card:active { 
+      cursor: grabbing; 
+      transform: scale(0.995);
+    }
+
+    .card-content {
+      flex: 1;
+      min-width: 0;
+      padding-right: 8px;
+    }
+
+    .card-title { 
+      font-weight: 600; 
+      font-size: 0.85rem; 
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-path { 
+      font-size: 0.725rem; 
+      color: #64748b; 
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .badge-tag {
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.675rem;
+      font-weight: 500;
+    }
+
+    .card-action-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 3px 6px;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .card-action-btn:hover {
+      color: #ef4444;
+      background: #fef2f2;
+    }
+
+    .card-action-btn.add-btn:hover {
+      color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 200px;
+      color: #94a3b8;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .empty-state-icon {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    .empty-state-text {
+      font-size: 0.85rem;
+      max-width: 260px;
+      line-height: 1.4;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #ffffff;
+      width: 90%;
+      max-width: 680px;
+      max-height: 80vh;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+    }
+
+    .modal-body {
+      padding: 18px;
+      overflow-y: auto;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #334155;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: #fafafa;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <div>
+      <h1>Skill Folder Packager</h1>
+      <p class="subtitle">Organize skills with nested folders on both sides and export a structured <code>skills.zip</code>.</p>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-secondary" onclick="document.getElementById('folderInput').click()">
+        📁 1. Select Skill Directory
+      </button>
+      <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;" onchange="handleFolderSelect(event)">
+      
+      <button class="btn" id="exportBtn" disabled onclick="exportZip()">
+        ⚡ 2. Export skills.zip
+      </button>
+    </div>
+  </div>
+
+  <div class="board">
+    <!-- Left Column: Available Skills Filesystem Tree -->
+    <div class="column" id="availableCol" 
+         ondragover="handleDragOver(event, 'available')" 
+         ondragleave="handleDragLeave(event)" 
+         ondrop="handleDrop(event, 'available')">
+      
+      <div class="column-header">
+        <div class="column-title">
+          <span>📁 Available Skills</span>
+          <span class="count-badge" id="availCount">0</span>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn-xs" onclick="expandAllFolders('available')">Expand All</button>
+          <button class="btn-xs btn-secondary" onclick="collapseAllFolders('available')">Collapse</button>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <input type="text" id="searchInput" class="search-box" placeholder="🔍 Search skills or folders..." oninput="handleSearch(event)" style="display:none;">
+      </div>
+
+      <div class="tree-container" id="availableContainer">
+        <div class="empty-state" id="availEmpty">
+          <div class="empty-state-icon">📂</div>
+          <div class="empty-state-text">No skill folder loaded.<br>Click <b>"1. Select Skill Directory"</b> to load your local skills folder.</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Right Column: Selected Skills Package Zone (Tree View) -->
+    <div class="column selected-column" id="selectedCol" 
+         ondragover="handleDragOver(event, 'selected')" 
+         ondragleave="handleDragLeave(event)" 
+         ondrop="handleDrop(event, 'selected')">
+      
+      <div class="column-header">
+        <div class="column-title">
+          <span>📦 Selected Package</span>
+          <span class="count-badge emerald" id="selectedCount">0</span>
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button class="btn-xs" onclick="expandAllFolders('selected')" id="selectedExpandBtn" style="display:none;">Expand All</button>
+          <button class="btn-xs btn-secondary" onclick="collapseAllFolders('selected')" id="selectedCollapseBtn" style="display:none;">Collapse</button>
+          <button class="btn-xs btn-xs-remove" onclick="clearAllSelected()" id="clearBtn" style="display:none;">Clear Package</button>
+        </div>
+      </div>
+
+      <div class="tree-container" id="selectedContainer">
+        <div class="empty-state" id="selectedEmpty">
+          <div class="empty-state-icon">📥</div>
+          <div class="empty-state-text">Drag individual skills or entire subfolders here. Folder hierarchies will be created in your selected package!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="previewModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <strong id="modalTitle" style="font-size: 0.95rem;">Skill Content Preview</strong>
+        <button onclick="closeModal()" style="border:none; background:none; font-size:1.2rem; cursor:pointer; color:#64748b;">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody">Loading...</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Notification</div>
+
+  <script>
+    let skillsMap = new Map(); // skillId -> { id, name, categoryPath, files: File[], isFolderSkill }
+    let selectedSkillIds = new Set();
+    
+    // Master tree model of available filesystem
+    let masterFolderHierarchy = { name: 'Root', path: '', folders: {}, skills: [] };
+    
+    // Explicit folder expansion state tracking per column
+    let expandedAvailableFolders = new Set();
+    let expandedSelectedFolders = new Set();
+    
+    let searchQuery = '';
+
+    function handleFolderSelect(event) {
+      const files = Array.from(event.target.files);
+      if (files.length === 0) return;
+
+      skillsMap.clear();
+      selectedSkillIds.clear();
+      expandedAvailableFolders.clear();
+      expandedSelectedFolders.clear();
+
+      // Normalize files relative to chosen top folder
+      const fileEntries = files.map(file => {
+        const parts = file.webkitRelativePath.split('/');
+        const relParts = parts.slice(1); // strip topmost root name
+        return {
+          file,
+          fullRelPath: relParts.join('/'),
+          parts: relParts
+        };
+      });
+
+      // Step 1: Identify explicit folder skills containing SKILL.md / index.md
+      const skillDirectories = new Set();
+      fileEntries.forEach(entry => {
+        const fileName = entry.parts[entry.parts.length - 1].toLowerCase();
+        if (fileName === 'skill.md' || fileName === 'index.md') {
+          const dirPath = entry.parts.slice(0, -1).join('/');
+          if (dirPath) skillDirectories.add(dirPath);
+        }
+      });
+
+      // Step 2: Build discrete Skill objects
+      const skillGroupMap = new Map();
+
+      fileEntries.forEach(entry => {
+        if (entry.parts.length === 0) return;
+
+        let matchedSkillDir = null;
+        for (const skillDir of skillDirectories) {
+          if (entry.fullRelPath === skillDir || entry.fullRelPath.startsWith(skillDir + '/')) {
+            matchedSkillDir = skillDir;
+            break;
+          }
+        }
+
+        if (matchedSkillDir) {
+          // Folder skill
+          const skillId = `dir:${matchedSkillDir}`;
+          if (!skillGroupMap.has(skillId)) {
+            const pathParts = matchedSkillDir.split('/');
+            const skillName = pathParts[pathParts.length - 1];
+            const categoryPath = pathParts.slice(0, -1).join('/');
+            
+            skillGroupMap.set(skillId, {
+              id: skillId,
+              name: skillName,
+              categoryPath: categoryPath || 'Root',
+              isFolderSkill: true,
+              folderPath: matchedSkillDir,
+              files: []
+            });
+          }
+          
+          const relativeInSkill = entry.fullRelPath.replace(matchedSkillDir + '/', '');
+          skillGroupMap.get(skillId).files.push({
+            file: entry.file,
+            relPath: relativeInSkill
+          });
+
+        } else {
+          // Individual Markdown or file skill
+          const fileName = entry.parts[entry.parts.length - 1];
+          if (fileName.toLowerCase().endsWith('.md') || fileName.toLowerCase().endsWith('.markdown')) {
+            const skillName = fileName.replace(/\.(md|markdown)$/i, '');
+            const categoryPath = entry.parts.slice(0, -1).join('/') || 'Root';
+            const skillId = `file:${entry.fullRelPath}`;
+
+            skillGroupMap.set(skillId, {
+              id: skillId,
+              name: skillName,
+              categoryPath: categoryPath,
+              isFolderSkill: false,
+              folderPath: categoryPath,
+              files: [{ file: entry.file, relPath: fileName }]
+            });
+          }
+        }
+      });
+
+      skillsMap = skillGroupMap;
+
+      // Rebuild master tree structure
+      buildMasterHierarchy();
+
+      document.getElementById('searchInput').style.display = 'block';
+
+      render();
+      showToast(`Loaded ${skillsMap.size} skills into tree!`);
+    }
+
+    function buildMasterHierarchy() {
+      masterFolderHierarchy = { name: 'Root', path: '', folders: {}, skills: [] };
+
+      skillsMap.forEach((skill) => {
+        const categoryParts = skill.categoryPath === 'Root' ? [] : skill.categoryPath.split('/');
+        
+        let currentFolder = masterFolderHierarchy;
+        let currentPath = '';
+
+        categoryParts.forEach(part => {
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          if (!currentFolder.folders[part]) {
+            currentFolder.folders[part] = {
+              name: part,
+              path: currentPath,
+              folders: {},
+              skills: []
+            };
+          }
+          currentFolder = currentFolder.folders[part];
+        });
+
+        currentFolder.skills.push(skill);
+      });
+
+      // Expand root level subfolders by default
+      Object.values(masterFolderHierarchy.folders).forEach(f => {
+        expandedAvailableFolders.add(f.path);
+        expandedSelectedFolders.add(f.path);
+      });
+    }
+
+    function buildSelectedHierarchy() {
+      const selectedTree = { name: 'Root', path: '', folders: {}, skills: [] };
+
+      selectedSkillIds.forEach(skillId => {
+        const skill = skillsMap.get(skillId);
+        if (!skill) return;
+
+        const categoryParts = skill.categoryPath === 'Root' ? [] : skill.categoryPath.split('/');
+        let currentFolder = selectedTree;
+        let currentPath = '';
+
+        categoryParts.forEach(part => {
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          if (!currentFolder.folders[part]) {
+            currentFolder.folders[part] = {
+              name: part,
+              path: currentPath,
+              folders: {},
+              skills: []
+            };
+          }
+          currentFolder = currentFolder.folders[part];
+        });
+
+        currentFolder.skills.push(skill);
+      });
+
+      return selectedTree;
+    }
+
+    function handleSearch(e) {
+      searchQuery = e.target.value.toLowerCase().trim();
+      render();
+    }
+
+    function render() {
+      renderAvailableColumn();
+      renderSelectedColumn();
+
+      const selectedCount = selectedSkillIds.size;
+      document.getElementById('exportBtn').disabled = selectedCount === 0;
+      document.getElementById('clearBtn').style.display = selectedCount > 0 ? 'inline-block' : 'none';
+      document.getElementById('selectedExpandBtn').style.display = selectedCount > 0 ? 'inline-block' : 'none';
+      document.getElementById('selectedCollapseBtn').style.display = selectedCount > 0 ? 'inline-block' : 'none';
+    }
+
+    function renderAvailableColumn() {
+      const container = document.getElementById('availableContainer');
+      const emptyState = document.getElementById('availEmpty');
+
+      const previousTree = container.querySelector('.tree-view');
+      if (previousTree) previousTree.remove();
+
+      if (skillsMap.size === 0) {
+        if (emptyState) emptyState.style.display = 'flex';
+        document.getElementById('availCount').textContent = '0';
+        return;
+      }
+
+      if (emptyState) emptyState.style.display = 'none';
+
+      const treeContainer = document.createElement('div');
+      treeContainer.className = 'tree-view';
+
+      let totalAvailCount = 0;
+
+      // Render root skills
+      masterFolderHierarchy.skills.forEach(skill => {
+        if (matchesSearch(skill) && !selectedSkillIds.has(skill.id)) {
+          treeContainer.appendChild(createSkillCard(skill, 'available'));
+          totalAvailCount++;
+        }
+      });
+
+      // Render subfolders
+      Object.values(masterFolderHierarchy.folders).forEach(subFolder => {
+        const folderNode = renderFolderNode(subFolder, 'available');
+        if (folderNode) {
+          treeContainer.appendChild(folderNode);
+          totalAvailCount += countUnselectedSkillsInFolder(subFolder);
+        }
+      });
+
+      container.appendChild(treeContainer);
+      document.getElementById('availCount').textContent = totalAvailCount;
+    }
+
+    function renderSelectedColumn() {
+      const container = document.getElementById('selectedContainer');
+      const emptyState = document.getElementById('selectedEmpty');
+
+      const previousTree = container.querySelector('.tree-view');
+      if (previousTree) previousTree.remove();
+
+      if (selectedSkillIds.size === 0) {
+        if (emptyState) emptyState.style.display = 'flex';
+        document.getElementById('selectedCount').textContent = '0';
+        return;
+      }
+
+      if (emptyState) emptyState.style.display = 'none';
+
+      const selectedTree = buildSelectedHierarchy();
+      const treeContainer = document.createElement('div');
+      treeContainer.className = 'tree-view';
+
+      // Render root selected skills
+      selectedTree.skills.forEach(skill => {
+        if (matchesSearch(skill)) {
+          treeContainer.appendChild(createSkillCard(skill, 'selected'));
+        }
+      });
+
+      // Render subfolders containing selected skills
+      Object.values(selectedTree.folders).forEach(subFolder => {
+        const folderNode = renderFolderNode(subFolder, 'selected');
+        if (folderNode) {
+          treeContainer.appendChild(folderNode);
+        }
+      });
+
+      container.appendChild(treeContainer);
+      document.getElementById('selectedCount').textContent = selectedSkillIds.size;
+    }
+
+    function renderFolderNode(folder, columnType) {
+      const isAvailableCol = columnType === 'available';
+      const masterFolderNode = findFolderByPath(masterFolderHierarchy, folder.path);
+      const totalInMaster = masterFolderNode ? getAllSkillIdsInFolder(masterFolderNode) : [];
+      const selectedInFolder = totalInMaster.filter(id => selectedSkillIds.has(id));
+      const unselectedInFolder = totalInMaster.filter(id => !selectedSkillIds.has(id));
+
+      if (isAvailableCol && unselectedInFolder.length === 0 && !searchQuery) {
+        return null; // No unselected items left to show in Available column
+      }
+
+      if (!isAvailableCol && selectedInFolder.length === 0 && !searchQuery) {
+        return null; // No selected items to show in Selected column
+      }
+
+      const hasSearchMatch = totalInMaster.some(id => matchesSearch(skillsMap.get(id)));
+      if (searchQuery && !hasSearchMatch) return null;
+
+      const folderElement = document.createElement('div');
+      folderElement.className = 'tree-folder';
+
+      const expandedSet = isAvailableCol ? expandedAvailableFolders : expandedSelectedFolders;
+      const isExpanded = expandedSet.has(folder.path) || searchQuery !== '';
+
+      let badgeHtml = '';
+      let actionsHtml = '';
+
+      if (isAvailableCol) {
+        badgeHtml = `<span class="count-badge">${unselectedInFolder.length}</span>`;
+        actionsHtml = `<button class="btn-xs" onclick="addFolderSkills('${folder.path}', event)" title="Add all items in group">+ Add Group</button>`;
+      } else {
+        const isPartial = selectedInFolder.length < totalInMaster.length;
+        if (isPartial) {
+          badgeHtml = `<span class="count-badge amber" title="Partially selected">(${selectedInFolder.length}/${totalInMaster.length} selected)</span>`;
+          actionsHtml = `
+            <button class="btn-xs btn-xs-add-remaining" onclick="addFolderSkills('${folder.path}', event)" title="Add remaining unselected skills in group">+ Add Remaining</button>
+            <button class="btn-xs btn-xs-remove" onclick="removeFolderSkills('${folder.path}', event)" title="Remove selected skills in group">&times; Remove Group</button>
+          `;
+        } else {
+          badgeHtml = `<span class="count-badge emerald">(${selectedInFolder.length}/${totalInMaster.length} selected)</span>`;
+          actionsHtml = `<button class="btn-xs btn-xs-remove" onclick="removeFolderSkills('${folder.path}', event)" title="Remove all skills in group">&times; Remove Group</button>`;
+        }
+      }
+
+      folderElement.innerHTML = `
+        <div class="tree-folder-header" 
+             draggable="true" 
+             ondragstart="handleFolderDragStart(event, '${folder.path}', '${columnType}')"
+             onclick="toggleFolder('${folder.path}', '${columnType}')">
+          <div class="folder-info">
+            <span class="folder-toggle">${isExpanded ? '▼' : '▶'}</span>
+            <span>📁</span>
+            <span class="folder-title" title="${folder.path}">${folder.name}</span>
+            ${badgeHtml}
+          </div>
+          <div class="folder-actions" onclick="event.stopPropagation()">
+            ${actionsHtml}
+          </div>
+        </div>
+        <div class="tree-folder-body ${isExpanded ? '' : 'collapsed'}"></div>
+      `;
+
+      const body = folderElement.querySelector('.tree-folder-body');
+
+      // Append child skills
+      folder.skills.forEach(skill => {
+        const isSelected = selectedSkillIds.has(skill.id);
+        if (matchesSearch(skill)) {
+          if ((isAvailableCol && !isSelected) || (!isAvailableCol && isSelected)) {
+            body.appendChild(createSkillCard(skill, columnType));
+          }
+        }
+      });
+
+      // Append subfolders
+      Object.values(folder.folders).forEach(sub => {
+        const subNode = renderFolderNode(sub, columnType);
+        if (subNode) body.appendChild(subNode);
+      });
+
+      return folderElement;
+    }
+
+    function matchesSearch(skill) {
+      if (!skill) return false;
+      if (!searchQuery) return true;
+      return skill.name.toLowerCase().includes(searchQuery) || 
+             skill.categoryPath.toLowerCase().includes(searchQuery);
+    }
+
+    function toggleFolder(folderPath, columnType) {
+      const set = columnType === 'available' ? expandedAvailableFolders : expandedSelectedFolders;
+      if (set.has(folderPath)) {
+        set.delete(folderPath);
+      } else {
+        set.add(folderPath);
+      }
+      render();
+    }
+
+    function expandAllFolders(columnType) {
+      const set = columnType === 'available' ? expandedAvailableFolders : expandedSelectedFolders;
+      skillsMap.forEach(skill => {
+        if (skill.categoryPath && skill.categoryPath !== 'Root') {
+          const parts = skill.categoryPath.split('/');
+          let curr = '';
+          parts.forEach(p => {
+            curr = curr ? `${curr}/${p}` : p;
+            set.add(curr);
+          });
+        }
+      });
+      render();
+    }
+
+    function collapseAllFolders(columnType) {
+      const set = columnType === 'available' ? expandedAvailableFolders : expandedSelectedFolders;
+      set.clear();
+      render();
+    }
+
+    function createSkillCard(skill, columnType) {
+      const isSelected = columnType === 'selected';
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.draggable = true;
+      card.id = `card-${skill.id}`;
+
+      card.ondragstart = (e) => {
+        e.dataTransfer.setData('text/plain', JSON.stringify({ 
+          type: 'skill', 
+          skillId: skill.id, 
+          source: columnType 
+        }));
+      };
+
+      const fileCountText = `${skill.files.length} file${skill.files.length > 1 ? 's' : ''}`;
+
+      card.innerHTML = `
+        <div class="card-content">
+          <div class="card-title">
+            <span>⚡ ${skill.name}</span>
+            ${skill.isFolderSkill ? '<span class="badge-tag">Folder Skill</span>' : ''}
+          </div>
+          <div class="card-path">
+            <span>${skill.categoryPath} • ${fileCountText}</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 4px; align-items: center;">
+          <button class="card-action-btn" onclick="previewSkill('${skill.id}', event)" title="Preview content">👁️</button>
+          ${
+            isSelected
+              ? `<button class="card-action-btn" onclick="removeSkill('${skill.id}')" title="Remove from package">&times;</button>`
+              : `<button class="card-action-btn add-btn" onclick="addSkill('${skill.id}')" title="Add to package">+</button>`
+          }
+        </div>
+      `;
+
+      return card;
+    }
+
+    function handleFolderDragStart(e, folderPath, columnType) {
+      e.dataTransfer.setData('text/plain', JSON.stringify({ 
+        type: 'folder', 
+        path: folderPath, 
+        source: columnType 
+      }));
+    }
+
+    function handleDragOver(e, columnType) {
+      e.preventDefault();
+      e.currentTarget.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    function handleDrop(e, targetCol) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+
+      try {
+        const rawData = e.dataTransfer.getData('text/plain');
+        if (!rawData) return;
+        const data = JSON.parse(rawData);
+
+        // BUG FIX: SAME-PLACE DROP PROTECTION
+        // If source column matches target column, DO NOTHING (NO-OP)
+        if (data.source === targetCol) {
+          return;
+        }
+
+        if (data.type === 'skill') {
+          if (targetCol === 'selected') {
+            selectedSkillIds.add(data.skillId);
+          } else {
+            selectedSkillIds.delete(data.skillId);
+          }
+        } else if (data.type === 'folder') {
+          const folderNode = findFolderByPath(masterFolderHierarchy, data.path);
+          if (folderNode) {
+            const skillIds = getAllSkillIdsInFolder(folderNode);
+            if (targetCol === 'selected') {
+              skillIds.forEach(id => selectedSkillIds.add(id));
+              showToast(`Added ${skillIds.length} skills from folder!`);
+            } else {
+              skillIds.forEach(id => selectedSkillIds.delete(id));
+              showToast(`Removed folder skills from package`);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Drop handling error:', err);
+      }
+
+      render();
+    }
+
+    function findFolderByPath(root, path) {
+      if (!path) return root;
+      const parts = path.split('/');
+      let curr = root;
+      for (const p of parts) {
+        if (!curr.folders[p]) return null;
+        curr = curr.folders[p];
+      }
+      return curr;
+    }
+
+    function getAllSkillIdsInFolder(folderNode) {
+      let ids = folderNode.skills.map(s => s.id);
+      Object.values(folderNode.folders).forEach(sub => {
+        ids = ids.concat(getAllSkillIdsInFolder(sub));
+      });
+      return ids;
+    }
+
+    function countUnselectedSkillsInFolder(folderNode) {
+      const allIds = getAllSkillIdsInFolder(folderNode);
+      return allIds.filter(id => !selectedSkillIds.has(id)).length;
+    }
+
+    function addSkill(id) {
+      selectedSkillIds.add(id);
+      render();
+    }
+
+    function removeSkill(id) {
+      selectedSkillIds.delete(id);
+      render();
+    }
+
+    function addFolderSkills(folderPath, event) {
+      if (event) event.stopPropagation();
+      const folderNode = findFolderByPath(masterFolderHierarchy, folderPath);
+      if (folderNode) {
+        const ids = getAllSkillIdsInFolder(folderNode);
+        ids.forEach(id => selectedSkillIds.add(id));
+        showToast(`Added ${ids.length} skills from ${folderNode.name}!`);
+        render();
+      }
+    }
+
+    function removeFolderSkills(folderPath, event) {
+      if (event) event.stopPropagation();
+      const folderNode = findFolderByPath(masterFolderHierarchy, folderPath);
+      if (folderNode) {
+        const ids = getAllSkillIdsInFolder(folderNode);
+        ids.forEach(id => selectedSkillIds.delete(id));
+        showToast(`Removed folder ${folderNode.name} from package`);
+        render();
+      }
+    }
+
+    function clearAllSelected() {
+      selectedSkillIds.clear();
+      render();
+    }
+
+    async function previewSkill(skillId, event) {
+      if (event) event.stopPropagation();
+
+      const skill = skillsMap.get(skillId);
+      if (!skill || skill.files.length === 0) return;
+
+      document.getElementById('modalTitle').textContent = `Preview: ${skill.name}`;
+      const body = document.getElementById('modalBody');
+      body.textContent = 'Loading content...';
+
+      document.getElementById('previewModal').classList.add('open');
+
+      try {
+        const mainFile = skill.files.find(f => f.relPath.toLowerCase().endsWith('.md')) || skill.files[0];
+        const text = await mainFile.file.text();
+        body.textContent = text;
+      } catch (err) {
+        body.textContent = 'Unable to load file preview.';
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('previewModal').classList.remove('open');
+    }
+
+    async function exportZip() {
+      if (selectedSkillIds.size === 0) return;
+
+      const exportBtn = document.getElementById('exportBtn');
+      const originalText = exportBtn.innerHTML;
+      exportBtn.disabled = true;
+      exportBtn.innerHTML = '⏳ Generating ZIP...';
+
+      try {
+        const zip = new JSZip();
+
+        for (const skillId of selectedSkillIds) {
+          const skill = skillsMap.get(skillId);
+          if (!skill) continue;
+
+          for (const fileObj of skill.files) {
+            const arrayBuffer = await fileObj.file.arrayBuffer();
+
+            let targetZipPath = '';
+            if (skill.categoryPath && skill.categoryPath !== 'Root') {
+              targetZipPath = `${skill.categoryPath}/${skill.isFolderSkill ? skill.name + '/' : ''}${fileObj.relPath}`;
+            } else {
+              targetZipPath = `${skill.isFolderSkill ? skill.name + '/' : ''}${fileObj.relPath}`;
+            }
+
+            zip.file(targetZipPath, arrayBuffer);
+          }
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'skills.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showToast(`Exported skills.zip with preserved subfolders!`);
+      } catch (err) {
+        console.error(err);
+        showToast('Error generating ZIP file.');
+      } finally {
+        exportBtn.disabled = false;
+        exportBtn.innerHTML = originalText;
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+  </script>
+</body>
+</html>
